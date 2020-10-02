@@ -1,5 +1,6 @@
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.FileWriterWithEncoding;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -18,60 +19,78 @@ public class MainClass {
 
     public static void main(String[] args) {
 
-        String sourceDir = args[0];;
-        String preprocessedDir = args[1];
+        String source = args[0];
+        String preprocessed = args[1];
 
         try {
-
-            if(new File(sourceDir).isDirectory()) {
-                for (File file : new File(sourceDir).listFiles()) {
-
-                    //if (!(new File(new File(preprocessedDir), file.getName())).exists()) {
-
-                        byte[] dataArr = FileUtils.readFileToByteArray(file);
-                        String data = new String(dataArr, StandardCharsets.UTF_8);
-                        String lines[] = data.split("\\r\\n");
-
-                        if(!lines[0].contains("no-preproc")) {
-
-                            String fileToProcessPath = file.getParentFile().getAbsolutePath();
-
-                            FileWriter fw = new FileWriter(new File(preprocessedDir + "/" + file.getName()));
-
-                            String readState = "normal";
-
-                            for (String line : lines) {
-                                if (readState.equals("normal")) {
-                                    fw.append(line + "\n");
-                                    Matcher parseline = reginclude.matcher(line);
-                                    if (parseline.find()) {
-                                        outputInclude(fw, fileToProcessPath + '/' + parseline.group(1),
-                                                parseline.group(2));
-                                        readState = "include";
-                                    }
-                                } else if (readState.equals("include")) {
-                                    Matcher parseline = regendinclude.matcher(line);
-                                    if (parseline.find()) {
-                                        readState = "normal";
-                                        fw.append(line + "\n");
-                                    }
-                                }
-                            }
-
-                            fw.flush();
-                            fw.close();
-
-                            //addHashToFile((new File(new File(preprocessedDir), file.getName())));
-                        }
-                    //}
+            if(new File(source).isDirectory()) {
+                for (File file : new File(source).listFiles()) {
+                    processFile(file, new File(preprocessed));
                 }
+            } else {
+                processFile(new File(source), new File(preprocessed));
             }
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
     }
 
-    private static void outputInclude(FileWriter fw, String fileName, String tag) throws Exception {
+    private static void processFile(File file, File outputFile) throws Exception {
+        //if (!(new File(new File(preprocessedDir), file.getName())).exists()) {
+
+        byte[] dataArr = FileUtils.readFileToByteArray(file);
+        String data = new String(dataArr, StandardCharsets.UTF_8);
+        String lines[] = data.split("\\r\\n");
+
+        if(!lines[0].contains("no-preproc")) {
+
+            String fileToProcessPath = file.getParentFile().getAbsolutePath();
+
+            FileWriterWithEncoding fw;
+
+            if(outputFile.isDirectory()) {
+                String preprocessedDir = outputFile.getAbsolutePath();
+                File output = new File(preprocessedDir + "/" + file.getName());
+                if (output.exists()) {
+                    FileUtils.forceDelete(output);
+                }
+                fw = new FileWriterWithEncoding(output, StandardCharsets.UTF_8);
+            } else {
+                if (outputFile.exists()) {
+                    FileUtils.forceDelete(outputFile);
+                }
+                fw = new FileWriterWithEncoding(outputFile, StandardCharsets.UTF_8);
+            }
+
+            String readState = "normal";
+
+            for (String line : lines) {
+                if (readState.equals("normal")) {
+                    fw.append(line + "\n");
+                    Matcher parseline = reginclude.matcher(line);
+                    if (parseline.find()) {
+                        outputInclude(fw, fileToProcessPath + '/' + parseline.group(1),
+                                parseline.group(2));
+                        readState = "include";
+                    }
+                } else if (readState.equals("include")) {
+                    Matcher parseline = regendinclude.matcher(line);
+                    if (parseline.find()) {
+                        readState = "normal";
+                        fw.append(line + "\n");
+                    }
+                }
+            }
+
+            fw.flush();
+            fw.close();
+
+            //addHashToFile((new File(new File(preprocessedDir), file.getName())));
+        }
+        //}
+    }
+
+    private static void outputInclude(FileWriterWithEncoding fw, String fileName, String tag) throws Exception {
         byte[] dataArr = FileUtils.readFileToByteArray(new File(fileName));
         String data = new String(dataArr, StandardCharsets.UTF_8);
         String lines[] = data.split("\\r\\n");
