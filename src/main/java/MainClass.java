@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,15 +39,18 @@ public class MainClass {
     private static void processFile(File file, File outputFile) throws Exception {
         //if (!(new File(new File(preprocessedDir), file.getName())).exists()) {
 
-        byte[] dataArr = FileUtils.readFileToByteArray(file);
-        String data = new String(dataArr, StandardCharsets.UTF_8);
-        String lines[] = data.split("\\r\\n");
+//        byte[] dataArr = FileUtils.readFileToByteArray(file);
+//        String data = new String(dataArr, StandardCharsets.UTF_8);
+//        String lines[] = data.split("\\r\\n");
+
+        List<String> allLines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+        String lines[] = allLines.stream().toArray(String[]::new);
 
         if(!lines[0].contains("no-preproc")) {
 
             String fileToProcessPath = file.getParentFile().getAbsolutePath();
 
-            FileWriterWithEncoding fw;
+            //FileWriterWithEncoding fw;
 
             if(outputFile.isDirectory()) {
                 String preprocessedDir = outputFile.getAbsolutePath();
@@ -54,22 +58,25 @@ public class MainClass {
                 if (output.exists()) {
                     FileUtils.forceDelete(output);
                 }
-                fw = new FileWriterWithEncoding(output, StandardCharsets.UTF_8);
+                //fw = new FileWriterWithEncoding(output, StandardCharsets.UTF_8);
+                outputFile = output;
             } else {
                 if (outputFile.exists()) {
                     FileUtils.forceDelete(outputFile);
                 }
-                fw = new FileWriterWithEncoding(outputFile, StandardCharsets.UTF_8);
+                //fw = new FileWriterWithEncoding(outputFile, StandardCharsets.UTF_8);
             }
 
             String readState = "normal";
 
+            List<String> linesToWrite = new ArrayList<>();
             for (String line : lines) {
                 if (readState.equals("normal")) {
-                    fw.append(line + "\n");
+                    //fw.append(line + "\n");
+                    linesToWrite.add(line);
                     Matcher parseline = reginclude.matcher(line);
                     if (parseline.find()) {
-                        outputInclude(fw, fileToProcessPath + '/' + parseline.group(1),
+                        outputInclude(linesToWrite, fileToProcessPath + '/' + parseline.group(1),
                                 parseline.group(2));
                         readState = "include";
                     }
@@ -77,23 +84,29 @@ public class MainClass {
                     Matcher parseline = regendinclude.matcher(line);
                     if (parseline.find()) {
                         readState = "normal";
-                        fw.append(line + "\n");
+                        //fw.append(line + "\n");
+                        linesToWrite.add(line);
                     }
                 }
             }
 
-            fw.flush();
-            fw.close();
+            //fw.flush();
+            //fw.close();
+
+            Files.write(outputFile.toPath(), linesToWrite, StandardCharsets.UTF_8);
 
             //addHashToFile((new File(new File(preprocessedDir), file.getName())));
         }
         //}
     }
 
-    private static void outputInclude(FileWriterWithEncoding fw, String fileName, String tag) throws Exception {
-        byte[] dataArr = FileUtils.readFileToByteArray(new File(fileName));
-        String data = new String(dataArr, StandardCharsets.UTF_8);
-        String lines[] = data.split("\\r\\n");
+    private static void outputInclude(List<String> linesToWrite, String fileName, String tag) throws Exception {
+//        byte[] dataArr = FileUtils.readFileToByteArray(new File(fileName));
+//        String data = new String(dataArr, StandardCharsets.UTF_8);
+//        String lines[] = data.split("\\r\\n");
+
+        List<String> allLines = Files.readAllLines(new File(fileName).toPath(), StandardCharsets.UTF_8);
+        String lines[] = allLines.stream().toArray(String[]::new);
 
         String readStateDest = "normal";
 
@@ -107,7 +120,8 @@ public class MainClass {
                 if (line.indexOf("end::" + tag + "[]") != -1) {
                     readStateDest = "normal";
                 } else {
-                    fw.append(line + "\n");
+                    //fw.append(line + "\n");
+                    linesToWrite.add(line);
                 }
             }
         }
