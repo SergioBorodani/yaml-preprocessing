@@ -4,7 +4,9 @@ import org.apache.commons.io.output.FileWriterWithEncoding;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,46 +26,54 @@ public class MainClass {
         String preprocessed = args[1];
 
         try {
-            if(new File(source).isDirectory()) {
-                for (File file : new File(source).listFiles()) {
-                    processFile(file, new File(preprocessed));
+            if(Files.isDirectory(Paths.get(source))) {
+                //for (File file : new File(source).listFiles()) {
+                  //  processFile(file, new File(preprocessed));
+                //}
+                try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(source))) {
+                    for (Path path : stream) {
+                        processFile(path, Paths.get(preprocessed));
+                    }
                 }
             } else {
-                processFile(new File(source), new File(preprocessed));
+                processFile(Paths.get(source), Paths.get(preprocessed));
             }
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
     }
 
-    private static void processFile(File file, File outputFile) throws Exception {
+    private static void processFile(Path file, Path outputFile) throws Exception {
         //if (!(new File(new File(preprocessedDir), file.getName())).exists()) {
 
 //        byte[] dataArr = FileUtils.readFileToByteArray(file);
 //        String data = new String(dataArr, StandardCharsets.UTF_8);
 //        String lines[] = data.split("\\r\\n");
 
-        List<String> allLines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+        List<String> allLines = Files.readAllLines(file, StandardCharsets.UTF_8);
         String lines[] = allLines.stream().toArray(String[]::new);
 
         if(!lines[0].contains("no-preproc")) {
 
-            String fileToProcessPath = file.getParentFile().getAbsolutePath();
+            Path fileToProcessPath = file.getParent();
 
             //FileWriterWithEncoding fw;
 
-            if(outputFile.isDirectory()) {
-                String preprocessedDir = outputFile.getAbsolutePath();
-                File output = new File(preprocessedDir + "/" + file.getName());
-                if (output.exists()) {
-                    FileUtils.forceDelete(output);
-                }
+            if(Files.isDirectory(outputFile)) {
+                String preprocessedDir = outputFile.toString();
+                //File output = new File(preprocessedDir + "/" + file.getFileName());
+                Path output = Paths.get(preprocessedDir + "/" + file.getFileName());
+                //if (Files.exists(output)) {
+                    //FileUtils.forceDelete(output);
+                    Files.deleteIfExists(output);
+                //}
                 //fw = new FileWriterWithEncoding(output, StandardCharsets.UTF_8);
                 outputFile = output;
             } else {
-                if (outputFile.exists()) {
-                    FileUtils.forceDelete(outputFile);
-                }
+                //if (Files.exists(outputFile)) {
+                    //FileUtils.forceDelete(outputFile);
+                    Files.deleteIfExists(outputFile);
+                //}
                 //fw = new FileWriterWithEncoding(outputFile, StandardCharsets.UTF_8);
             }
 
@@ -76,7 +86,7 @@ public class MainClass {
                     linesToWrite.add(line);
                     Matcher parseline = reginclude.matcher(line);
                     if (parseline.find()) {
-                        outputInclude(linesToWrite, fileToProcessPath + '/' + parseline.group(1),
+                        outputInclude(linesToWrite, fileToProcessPath.toString() + '/' + parseline.group(1),
                                 parseline.group(2));
                         readState = "include";
                     }
@@ -93,7 +103,7 @@ public class MainClass {
             //fw.flush();
             //fw.close();
 
-            Files.write(outputFile.toPath(), linesToWrite, StandardCharsets.UTF_8);
+            Files.write(outputFile, linesToWrite, StandardCharsets.UTF_8);
 
             //addHashToFile((new File(new File(preprocessedDir), file.getName())));
         }
@@ -105,7 +115,7 @@ public class MainClass {
 //        String data = new String(dataArr, StandardCharsets.UTF_8);
 //        String lines[] = data.split("\\r\\n");
 
-        List<String> allLines = Files.readAllLines(new File(fileName).toPath(), StandardCharsets.UTF_8);
+        List<String> allLines = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
         String lines[] = allLines.stream().toArray(String[]::new);
 
         String readStateDest = "normal";
