@@ -50,7 +50,14 @@ public class MainClass {
 //        String data = new String(dataArr, StandardCharsets.UTF_8);
 //        String lines[] = data.split("\\r\\n");
 
-        List<String> allLines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        System.out.println(file.toString());
+
+        List<String> allLines = new ArrayList<>();
+        try {
+            allLines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        } catch (Exception exp) {
+            return;
+        }
         String lines[] = allLines.stream().toArray(String[]::new);
 
         if(!lines[0].contains("no-preproc")) {
